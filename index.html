@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoRaWAN Temperaturer – Horisont</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=DM+Sans:wght@300;400;500&display=swap');
+
+:root {
+  --bg: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2330;
+  --border: #30363d;
+  --text: #e6edf3;
+  --muted: #7d8590;
+  --accent: #58a6ff;
+  --cold: #79c0ff;
+  --warm: #ff7b72;
+  --ok: #3fb950;
+  --warn: #d29922;
+  --font-mono: 'DM Mono', monospace;
+  --font-sans: 'DM Sans', sans-serif;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  padding: 2rem;
+}
+
+header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.logo { display: flex; align-items: center; gap: 10px; }
+
+.logo-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--muted);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+h1 {
+  font-family: var(--font-mono);
+  font-size: 1.1rem;
+  font-weight: 400;
+  letter-spacing: 0.05em;
+}
+
+.subtitle {
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+.api-form { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+.api-form input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 8px 14px;
+  border-radius: 6px;
+  width: 280px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.api-form input:focus { border-color: var(--accent); }
+.api-form input::placeholder { color: var(--muted); }
+
+button {
+  background: var(--accent);
+  color: #0d1117;
+  border: none;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 8px 18px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: opacity 0.2s, transform 0.1s;
+  white-space: nowrap;
+}
+
+button:hover { opacity: 0.85; }
+button:active { transform: scale(0.98); }
+button:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.status-bar {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1.5rem;
+  min-height: 18px;
+}
+.status-bar.err { color: var(--warm); }
+.status-bar.ok { color: var(--ok); }
+.status-bar.loading { color: var(--accent); }
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.3s, transform 0.3s;
+}
+.stat-card.visible { opacity: 1; transform: translateY(0); }
+
+.stat-label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 1.6rem;
+  font-weight: 300;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+}
+
+.filter-input {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 6px 12px;
+  border-radius: 6px;
+  outline: none;
+  width: 200px;
+  transition: border-color 0.2s;
+}
+.filter-input:focus { border-color: var(--accent); }
+.filter-input::placeholder { color: var(--muted); }
+
+.sort-btn {
+  background: var(--surface);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  padding: 6px 12px;
+}
+.sort-btn.active { color: var(--accent); border-color: var(--accent); background: rgba(88,166,255,0.08); }
+
+.refresh-btn {
+  background: var(--surface2);
+  color: var(--muted);
+  border: 1px solid var(--border);
+  font-size: 0.75rem;
+  padding: 6px 12px;
+}
+.refresh-btn:hover { color: var(--text); }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.sensor-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1.25rem;
+  position: relative;
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity 0.3s, transform 0.3s, border-color 0.2s;
+}
+.sensor-card.visible { opacity: 1; transform: translateY(0); }
+.sensor-card:hover { border-color: #444d56; }
+
+.sensor-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: var(--card-accent, var(--border));
+}
+
+.sensor-name {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.sensor-model {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 1rem;
+  opacity: 0.6;
+}
+
+.temp-display {
+  font-family: var(--font-mono);
+  font-size: 2.2rem;
+  font-weight: 300;
+  line-height: 1;
+  color: var(--card-color, var(--text));
+}
+
+.temp-unit { font-size: 1rem; color: var(--muted); margin-left: 2px; }
+
+.temp-label {
+  font-size: 0.7rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  margin-top: 6px;
+}
+
+.no-data {
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  margin-top: 4px;
+}
+
+.last-seen {
+  font-size: 0.65rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  margin-top: 8px;
+  opacity: 0.6;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 4rem 2rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 0.85rem;
+  line-height: 2;
+  grid-column: 1 / -1;
+}
+
+@media (max-width: 600px) {
+  body { padding: 1rem; }
+  .api-form input { width: 100%; }
+  header { flex-direction: column; align-items: flex-start; }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-dot" id="status-dot"></div>
+    <div>
+      <h1>LoRaWAN Temperaturer</h1>
+      <div class="subtitle">Horisont / Fastighet API</div>
+    </div>
+  </div>
+  <div class="api-form">
+    <input type="password" id="api-key" placeholder="Klistra in din API-nyckel..." autocomplete="off" />
+    <button onclick="loadData()" id="load-btn">Hämta sensorer</button>
+  </div>
+</header>
+
+<div class="status-bar" id="status-bar">Ange din API-nyckel och klicka Hämta sensorer.</div>
+
+<div class="stats-row" id="stats-row" style="display:none">
+  <div class="stat-card" id="stat-total"><div class="stat-label">Sensorer</div><div class="stat-value" id="val-total">–</div></div>
+  <div class="stat-card" id="stat-avg"><div class="stat-label">Snitt °C</div><div class="stat-value" id="val-avg">–</div></div>
+  <div class="stat-card" id="stat-min"><div class="stat-label">Lägst °C</div><div class="stat-value" id="val-min">–</div></div>
+  <div class="stat-card" id="stat-max"><div class="stat-label">Högst °C</div><div class="stat-value" id="val-max">–</div></div>
+</div>
+
+<div class="controls" id="controls" style="display:none">
+  <input class="filter-input" id="filter-input" placeholder="Filtrera sensorer..." oninput="renderCards()" />
+  <button class="sort-btn active" id="sort-name" onclick="setSort('name')">Namn</button>
+  <button class="sort-btn" id="sort-temp" onclick="setSort('temp')">Temperatur</button>
+  <button class="refresh-btn" onclick="loadData()">↻ Uppdatera</button>
+</div>
+
+<div class="grid" id="sensor-grid">
+  <div class="empty-state">Ange din API-nyckel ovan<br>för att se temperatursensorerna.</div>
+</div>
+
+<script>
+const BASE = 'https://api.sunflower.horisont.app';
+let allDevices = [];
+let allMeasurements = {};
+let currentSort = 'name';
+
+function setStatus(msg, type) {
+  const el = document.getElementById('status-bar');
+  el.textContent = msg;
+  el.className = 'status-bar' + (type ? ' ' + type : '');
+  const dot = document.getElementById('status-dot');
+  const colors = { ok: ['#3fb950','0 0 8px #3fb950'], err: ['#ff7b72','0 0 8px #ff7b72'], loading: ['#58a6ff','0 0 8px #58a6ff'] };
+  if (colors[type]) {
+    dot.style.background = colors[type][0];
+    dot.style.boxShadow = colors[type][1];
+  } else {
+    dot.style.background = '#7d8590';
+    dot.style.boxShadow = 'none';
+  }
+}
+
+function getKey() { return document.getElementById('api-key').value.trim(); }
+function apiHeaders() { return { 'Ocp-Apim-Subscription-Key': getKey() }; }
+
+async function runInBatches(items, batchSize, asyncFn) {
+  const results = [];
+  for (let i = 0; i < items.length; i += batchSize) {
+    const batch = items.slice(i, i + batchSize);
+    const batchResults = await Promise.all(batch.map(asyncFn));
+    results.push(...batchResults);
+    setStatus('Hämtar mätpunkter... (' + Math.min(i + batchSize, items.length) + '/' + items.length + ')', 'loading');
+  }
+  return results;
+}
+
+async function fetchAllDevices() {
+  let devices = [];
+  let token = null;
+  do {
+    let url = BASE + '/v1/devices?Take=100';
+    if (token) url += '&ContinuationToken=' + encodeURIComponent(token);
+    const r = await fetch(url, { headers: apiHeaders() });
+    if (!r.ok) throw new Error('HTTP ' + r.status + ' vid /v1/devices');
+    const d = await r.json();
+    devices = devices.concat(d.devices || []);
+    token = d.continuationToken || null;
+  } while (token);
+  return devices;
+}
+
+async function fetchMeasurements(deviceId) {
+  try {
+    const url = BASE + '/v1/measurementpoints?DeviceId=' + encodeURIComponent(deviceId);
+    const r = await fetch(url, { headers: apiHeaders() });
+    if (!r.ok) return [];
+    const d = await r.json();
+    return d.measurementPoints || d.items || (Array.isArray(d) ? d : []);
+  } catch { return []; }
+}
+
+function findTemp(points) {
+  if (!Array.isArray(points) || !points.length) return null;
+  for (const p of points) {
+    const name = (p.name || p.type || p.unit || '').toLowerCase();
+    const val = p.latestValue ?? p.value ?? p.currentValue ?? null;
+    if ((name.includes('temp') || p.unit === '°C' || p.unit === 'C') && val !== null) {
+      return { value: parseFloat(val), name: p.name || 'Temperatur', timestamp: p.latestTimestamp || p.timestamp || null };
+    }
+  }
+  for (const p of points) {
+    const val = p.latestValue ?? p.value ?? p.currentValue ?? null;
+    if (val !== null && !isNaN(parseFloat(val))) {
+      return { value: parseFloat(val), name: p.name || p.type || 'Värde', timestamp: p.latestTimestamp || p.timestamp || null };
+    }
+  }
+  return null;
+}
+
+function tempColor(t) {
+  if (t === null) return { color: 'var(--muted)', accent: 'var(--border)' };
+  if (t < 15) return { color: 'var(--cold)', accent: '#79c0ff' };
+  if (t < 19) return { color: '#a5d6ff', accent: '#a5d6ff' };
+  if (t <= 22) return { color: 'var(--ok)', accent: '#3fb950' };
+  if (t <= 25) return { color: 'var(--warn)', accent: '#d29922' };
+  return { color: 'var(--warm)', accent: '#ff7b72' };
+}
+
+function formatTime(ts) {
+  if (!ts) return '';
+  try {
+    return new Date(ts).toLocaleString('sv-SE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  } catch { return ''; }
+}
+
+async function loadData() {
+  const key = getKey();
+  if (!key) { setStatus('Du måste ange en API-nyckel.', 'err'); return; }
+  const btn = document.getElementById('load-btn');
+  btn.disabled = true;
+  setStatus('Hämtar enheter...', 'loading');
+  document.getElementById('sensor-grid').innerHTML = '<div class="empty-state">Hämtar sensorer...</div>';
+
+  try {
+    allDevices = await fetchAllDevices();
+    setStatus('Hittade ' + allDevices.length + ' enheter. Hämtar mätpunkter 5 åt gången...', 'loading');
+
+    allMeasurements = {};
+    const results = await runInBatches(allDevices, 5, async (dev) => {
+      const pts = await fetchMeasurements(dev.id);
+      return { id: dev.id, pts };
+    });
+    results.forEach(({ id, pts }) => { allMeasurements[id] = pts; });
+
+    setStatus('Klart – ' + allDevices.length + ' sensorer. Uppdaterat ' + new Date().toLocaleTimeString('sv-SE'), 'ok');
+    document.getElementById('stats-row').style.display = 'grid';
+    document.getElementById('controls').style.display = 'flex';
+    updateStats();
+    renderCards();
+    setTimeout(() => {
+      document.querySelectorAll('.stat-card').forEach((c, i) => {
+        setTimeout(() => c.classList.add('visible'), i * 80);
+      });
+    }, 50);
+  } catch (e) {
+    setStatus('Fel: ' + e.message, 'err');
+    document.getElementById('sensor-grid').innerHTML = '<div class="empty-state">Kunde inte hämta data.<br>' + e.message + '</div>';
+  }
+  btn.disabled = false;
+}
+
+function updateStats() {
+  const temps = allDevices.map(d => findTemp(allMeasurements[d.id] || [])).filter(t => t !== null).map(t => t.value);
+  document.getElementById('val-total').textContent = allDevices.length;
+  if (temps.length) {
+    document.getElementById('val-avg').textContent = (temps.reduce((a,b) => a+b,0) / temps.length).toFixed(1);
+    document.getElementById('val-min').textContent = Math.min(...temps).toFixed(1);
+    document.getElementById('val-max').textContent = Math.max(...temps).toFixed(1);
+  }
+}
+
+function setSort(s) {
+  currentSort = s;
+  document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('sort-' + s).classList.add('active');
+  renderCards();
+}
+
+function renderCards() {
+  const filter = document.getElementById('filter-input').value.toLowerCase();
+  let devices = allDevices.filter(d => {
+    const name = (d.manufacturerDeviceId || d.serialNumber || d.id || '').toLowerCase();
+    const model = (d.model || d.manufacturer || '').toLowerCase();
+    return !filter || name.includes(filter) || model.includes(filter);
+  });
+
+  if (currentSort === 'temp') {
+    devices.sort((a, b) => {
+      const ta = findTemp(allMeasurements[a.id] || []);
+      const tb = findTemp(allMeasurements[b.id] || []);
+      return (tb ? tb.value : -999) - (ta ? ta.value : -999);
+    });
+  } else {
+    devices.sort((a, b) => (a.manufacturerDeviceId || '').localeCompare(b.manufacturerDeviceId || ''));
+  }
+
+  const grid = document.getElementById('sensor-grid');
+  if (!devices.length) {
+    grid.innerHTML = '<div class="empty-state">Inga sensorer matchar filtret.</div>';
+    return;
+  }
+
+  grid.innerHTML = devices.map((dev, i) => {
+    const temp = findTemp(allMeasurements[dev.id] || []);
+    const { color, accent } = tempColor(temp ? temp.value : null);
+    const name = dev.manufacturerDeviceId || dev.serialNumber || dev.id;
+    const model = [dev.model, dev.manufacturer].filter(Boolean).join(' · ');
+    const ts = temp && temp.timestamp ? formatTime(temp.timestamp) : '';
+    return `<div class="sensor-card" style="--card-color:${color};--card-accent:${accent};transition-delay:${i*30}ms">
+      <div class="sensor-name">${name}</div>
+      ${model ? `<div class="sensor-model">${model}</div>` : ''}
+      ${temp !== null
+        ? `<div class="temp-display">${temp.value.toFixed(1)}<span class="temp-unit">°C</span></div><div class="temp-label">${temp.name}</div>`
+        : `<div class="no-data">– ingen temperatur</div>`}
+      ${ts ? `<div class="last-seen">${ts}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  setTimeout(() => document.querySelectorAll('.sensor-card').forEach(c => c.classList.add('visible')), 30);
+}
+
+document.getElementById('api-key').addEventListener('keydown', e => {
+  if (e.key === 'Enter') loadData();
+});
+</script>
+</body>
+</html>
